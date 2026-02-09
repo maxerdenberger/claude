@@ -1,0 +1,15 @@
+{
+  "name": "drawing-bot-svg-filter",
+  "version": "1.0.0",
+  "description": "A simple drawing bot that generates filtered SVG artwork",
+  "main": "src/index.js",
+  "bin": {
+    "drawing-bot": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node test/test.js"
+  },
+  "keywords": ["svg", "drawing", "bot", "filter", "generative-art"],
+  "license": "MIT"
+}
