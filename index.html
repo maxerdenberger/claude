@@ -621,7 +621,10 @@ async function downloadPNG() {
   btn.classList.add("loading");
   btn.textContent = "Generating…";
 
-  const SIZE = 1080;
+  const SIZE  = 1080;
+  const PAD   = 60;          // side padding
+  const INNER = SIZE - PAD * 2;  // 960px content width
+
   const canvas = document.createElement("canvas");
   canvas.width  = SIZE;
   canvas.height = SIZE;
@@ -629,91 +632,106 @@ async function downloadPNG() {
 
   const exp = data[city][idx];
 
-  // ── 1. Gradient background ──────────────────────────
-  const tmpEl = document.createElement("div");
-  tmpEl.style.cssText = `width:1px;height:1px;background:${exp.gradient};position:fixed;visibility:hidden`;
-  document.body.appendChild(tmpEl);
-  const grdStr = getComputedStyle(tmpEl).background;
-  document.body.removeChild(tmpEl);
+  // Palette – matches CSS variables exactly
+  const INK = "#1A1A1A", SUB = "#5A5A5A", BG = "#F5F5F7",
+        WHITE = "#ffffff", RED = "#FF385C";
 
-  // Parse and re-draw the gradient on the full canvas via a helper
-  drawGradientFill(ctx, exp.gradient, SIZE, SIZE);
-
-  // ── 2. Try to load the Picsum photo ─────────────────
-  let photoLoaded = false;
-  try {
-    const img = await loadImage(`https://picsum.photos/seed/${exp.seed}/1080/1080`);
-    // Photo fills the canvas, darkened via composite
-    ctx.drawImage(img, 0, 0, SIZE, SIZE);
-    photoLoaded = true;
-  } catch (_) { /* keep gradient */ }
-
-  // ── 3. Dark gradient scrim (bottom 55%) ─────────────
-  const scrim = ctx.createLinearGradient(0, SIZE * 0.3, 0, SIZE);
-  scrim.addColorStop(0,   "rgba(0,0,0,0)");
-  scrim.addColorStop(0.4, "rgba(0,0,0,0.45)");
-  scrim.addColorStop(1,   "rgba(0,0,0,0.82)");
-  ctx.fillStyle = scrim;
+  // ── 1. Page background ───────────────────────────────
+  ctx.fillStyle = BG;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  // ── 4. Decorative circles ───────────────────────────
+  // ── 2. airbnb pill badge (top-center) ────────────────
+  const BADGE_W = 160, BADGE_H = 44, BADGE_R = 22;
+  const badgeX  = (SIZE - BADGE_W) / 2;
+  const badgeY  = 52;
+  roundedRect(ctx, badgeX, badgeY, BADGE_W, BADGE_H, BADGE_R);
+  ctx.fillStyle = RED;
+  ctx.fill();
+  ctx.font      = "bold 24px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif";
+  ctx.fillStyle = WHITE;
+  ctx.textAlign = "center";
+  ctx.fillText("airbnb", SIZE / 2, badgeY + 30);
+
+  // ── 3. Stars ─────────────────────────────────────────
+  const starCY = badgeY + BADGE_H + 28;
+  drawStars(ctx, SIZE / 2, starCY, 5, 20, RED);
+
+  // ── 4. Quote text (dark ink, no shadow) ──────────────
+  ctx.textAlign  = "center";
+  ctx.fillStyle  = INK;
+  ctx.shadowBlur = 0;
+
+  const quoteStr = "\u201C" + exp.quote + "\u201D";
+  const maxW     = INNER * 0.94;
+  const qFS      = fitFontSize(ctx, quoteStr, maxW, 90, 52, 900);
+  ctx.font       = `900 ${qFS}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
+  const qLines   = wrapText(ctx, quoteStr, maxW);
+  const qLineH   = qFS * 1.2;
+  let   curY     = starCY + 28 + qFS * 0.85;
+
+  qLines.forEach(ln => { ctx.fillText(ln, SIZE / 2, curY); curY += qLineH; });
+  curY -= (qLineH - qFS * 0.3);  // land on baseline of last line
+
+  // ── 5. Reviewer (subdued, italic feel) ───────────────
+  const revFS  = Math.round(qFS * 0.5);
+  ctx.font     = `700 ${revFS}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = SUB;
+  curY += revFS * 0.55;
+  ctx.fillText("\u2014 " + exp.reviewer, SIZE / 2, curY);
+  curY += revFS * 1.1;
+
+  // ── 6. Image area (rounded card, gradient + photo) ───
+  const IMG_TOP = curY + 32;
+  const IMG_BOT = SIZE - PAD - 54 - 18;  // room for title at bottom
+  const IMG_H   = IMG_BOT - IMG_TOP;
+  const IMG_L   = PAD;
+  const IMG_W   = INNER;
+  const RADIUS  = 22;
+
+  // Shadow layer (painted before clip so it shows outside the rect)
   ctx.save();
-  ctx.globalAlpha = 0.08;
-  ctx.fillStyle   = "#fff";
-  ctx.beginPath(); ctx.arc(SIZE + 120, SIZE + 120, 520, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(-120, -80,  340, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowColor   = "rgba(0,0,0,0.16)";
+  ctx.shadowBlur    = 36;
+  ctx.shadowOffsetY = 10;
+  roundedRect(ctx, IMG_L, IMG_TOP, IMG_W, IMG_H, RADIUS);
+  ctx.fillStyle = "#cccccc";
+  ctx.fill();
   ctx.restore();
 
-  // ── 5. Airbnb logo mark (simple rautenrose pill) ────
-  drawAirbnbBrand(ctx, SIZE);
+  // Clip + fill image area
+  ctx.save();
+  roundedRect(ctx, IMG_L, IMG_TOP, IMG_W, IMG_H, RADIUS);
+  ctx.clip();
 
-  // ── 6. Stars ────────────────────────────────────────
-  const starY = SIZE - 380;
-  drawStars(ctx, SIZE / 2, starY, 5, 28, "#FF385C");
+  // Gradient background (always visible)
+  drawGradientFill(ctx, exp.gradient, IMG_L, IMG_TOP, IMG_W, IMG_H);
 
-  // ── 7. Quote text ───────────────────────────────────
-  ctx.textAlign    = "center";
-  ctx.fillStyle    = "#ffffff";
-  ctx.shadowColor  = "rgba(0,0,0,0.5)";
-  ctx.shadowBlur   = 16;
+  // Decorative circles (matching .img-deco in CSS)
+  ctx.globalAlpha = 0.07;
+  ctx.fillStyle   = WHITE;
+  ctx.beginPath(); ctx.arc(IMG_L + IMG_W + 80, IMG_TOP + IMG_H + 80, 400, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(IMG_L - 60, IMG_TOP - 40, 260, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
 
-  const quoteStr   = "\u201C" + exp.quote + "\u201D";
-  const maxW       = SIZE * 0.82;
-  const quoteFSize = fitFontSize(ctx, quoteStr, maxW, 96, 56, 900);
+  // Photo (on top of gradient, fades in on load)
+  try {
+    const photo = await loadImage(`https://picsum.photos/seed/${exp.seed}/1080/1080`);
+    ctx.drawImage(photo, IMG_L, IMG_TOP, IMG_W, IMG_H);
+  } catch (_) { /* keep gradient */ }
 
-  ctx.font      = `900 ${quoteFSize}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
-  const lines   = wrapText(ctx, quoteStr, maxW);
-  const lineH   = quoteFSize * 1.22;
-  const totalH  = lines.length * lineH;
-  let   textY   = SIZE - 310 - totalH / 2 + quoteFSize * 0.35;
+  ctx.restore();  // end clip
 
-  lines.forEach(line => {
-    ctx.fillText(line, SIZE / 2, textY);
-    textY += lineH;
-  });
+  // ── 7. Experience title (below image) ────────────────
+  const titleY = SIZE - PAD - 8;
+  const tFS    = fitFontSize(ctx, exp.title, maxW, 36, 22, 400);
+  ctx.font      = `400 ${tFS}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = SUB;
+  ctx.textAlign = "center";
+  const tLines  = wrapText(ctx, exp.title, maxW);
+  // Single line with ellipsis to keep it tidy
+  ctx.fillText(tLines[0] + (tLines.length > 1 ? "…" : ""), SIZE / 2, titleY);
 
-  // ── 8. Reviewer ─────────────────────────────────────
-  ctx.shadowBlur = 10;
-  ctx.font       = `700 ${Math.round(quoteFSize * 0.52)}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
-  ctx.fillStyle  = "rgba(255,255,255,0.78)";
-  ctx.fillText("\u2014 " + exp.reviewer, SIZE / 2, textY + quoteFSize * 0.28);
-
-  // ── 9. Experience title (bottom) ────────────────────
-  ctx.shadowBlur   = 8;
-  const titleFSize = fitFontSize(ctx, exp.title, maxW, 38, 24, 400);
-  ctx.font         = `400 ${titleFSize}px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif`;
-  ctx.fillStyle    = "rgba(255,255,255,0.62)";
-
-  const titleLines = wrapText(ctx, exp.title, maxW);
-  const tLineH     = titleFSize * 1.35;
-  let   titleY     = SIZE - 88;
-  if (titleLines.length > 1) titleY -= (titleLines.length - 1) * tLineH / 2;
-  titleLines.forEach(l => { ctx.fillText(l, SIZE / 2, titleY); titleY += tLineH; });
-
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = "transparent";
-
-  // ── 10. Trigger download ────────────────────────────
+  // ── 8. Trigger download ───────────────────────────────
   canvas.toBlob(blob => {
     const url = URL.createObjectURL(blob);
     const a   = document.createElement("a");
@@ -738,57 +756,39 @@ function loadImage(src) {
   });
 }
 
-function drawGradientFill(ctx, cssGradient, w, h) {
-  // Parse "linear-gradient(Ndeg, color1 stop%, ...)"
+function roundedRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawGradientFill(ctx, cssGradient, x, y, w, h) {
   const angleMatch = cssGradient.match(/(\d+(?:\.\d+)?)deg/);
   const angle = angleMatch ? parseFloat(angleMatch[1]) : 135;
   const rad   = (angle - 90) * Math.PI / 180;
-  const cx = w / 2, cy = h / 2;
+  const cx = x + w / 2, cy = y + h / 2;
   const len = Math.sqrt(w * w + h * h) / 2;
   const x0 = cx - Math.cos(rad) * len, y0 = cy - Math.sin(rad) * len;
   const x1 = cx + Math.cos(rad) * len, y1 = cy + Math.sin(rad) * len;
 
-  const grd = ctx.createLinearGradient(x0, y0, x1, y1);
+  const grd   = ctx.createLinearGradient(x0, y0, x1, y1);
   const stops = [...cssGradient.matchAll(/(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))\s+(\d+(?:\.\d+)?)%/g)];
   if (stops.length >= 2) {
     stops.forEach(s => grd.addColorStop(parseFloat(s[2]) / 100, s[1]));
   } else {
-    // Fallback: two default stops
     grd.addColorStop(0, "#FF385C");
     grd.addColorStop(1, "#e31c5f");
   }
   ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, w, h);
-}
-
-function drawAirbnbBrand(ctx, size) {
-  // Simple "airbnb" wordmark area — top-left pill + text
-  const pad = 48;
-  ctx.save();
-  ctx.globalAlpha = 0.92;
-  // Red pill badge
-  const bw = 176, bh = 50, br = 25;
-  const bx = pad, by = pad;
-  ctx.beginPath();
-  ctx.moveTo(bx + br, by);
-  ctx.lineTo(bx + bw - br, by);
-  ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
-  ctx.lineTo(bx + bw, by + bh - br);
-  ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
-  ctx.lineTo(bx + br, by + bh);
-  ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
-  ctx.lineTo(bx, by + br);
-  ctx.quadraticCurveTo(bx, by, bx + br, by);
-  ctx.closePath();
-  ctx.fillStyle = "#FF385C";
-  ctx.fill();
-
-  ctx.font       = "bold 26px -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif";
-  ctx.fillStyle  = "#ffffff";
-  ctx.textAlign  = "center";
-  ctx.shadowBlur = 0;
-  ctx.fillText("airbnb", bx + bw / 2, by + 33);
-  ctx.restore();
+  ctx.fillRect(x, y, w, h);
 }
 
 function drawStars(ctx, cx, cy, count, size, color) {
