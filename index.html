@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airbnb Experience Reviews</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #FF385C;
+      --ink: #1A1A1A;
+      --sub: #5A5A5A;
+      --bg: #F5F5F7;
+      --border: #E0E0E0;
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px;
+    }
+
+    /* ── App shell ── */
+    .app {
+      width: 100%;
+      max-width: 375px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+    }
+
+    /* ── City dropdown ── */
+    .city-wrap { width: 100%; position: relative; }
+
+    .city-select {
+      width: 100%;
+      padding: 13px 42px 13px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      color: var(--ink);
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      appearance: none;
+      outline: none;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      transition: border-color .2s, box-shadow .2s;
+      text-align: center;
+      text-align-last: center;
+    }
+    .city-select:focus {
+      border-color: var(--red);
+      box-shadow: 0 2px 16px rgba(255,56,92,.18);
+    }
+    .city-wrap::after {
+      content: '';
+      position: absolute;
+      right: 17px; top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #888;
+      pointer-events: none;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+    .card.out { opacity: 0; transform: translateY(10px); }
+
+    /* Quote */
+    .quote { text-align: center; }
+    .quote-text {
+      font-size: clamp(1.65rem, 7.5vw, 2.1rem);
+      font-weight: 900;
+      line-height: 1.18;
+      color: var(--ink);
+      letter-spacing: -.4px;
+    }
+    .quote-author {
+      font-size: clamp(1.65rem, 7.5vw, 2.1rem);
+      font-weight: 900;
+      line-height: 1.25;
+      color: var(--ink);
+      letter-spacing: -.4px;
+      margin-top: 2px;
+    }
+
+    /* Image area */
+    .img-wrap {
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 10px 36px rgba(0,0,0,.16);
+    }
+    .img-bg {
+      position: absolute; inset: 0;
+    }
+    .img-photo {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity .5s ease;
+    }
+    .img-photo.show { opacity: 1; }
+
+    /* Decorative circles on gradient */
+    .img-deco {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .img-deco::before, .img-deco::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.07);
+    }
+    .img-deco::before { width: 280px; height: 280px; bottom: -60px; right: -60px; }
+    .img-deco::after  { width: 180px; height: 180px; top: -40px; left: -40px; }
+
+    /* Heart button */
+    .heart-btn {
+      position: absolute; top: 13px; right: 13px;
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      border: none;
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+      transition: transform .12s ease, box-shadow .12s ease;
+      z-index: 4;
+    }
+    .heart-btn:hover { transform: scale(1.1); box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+    .heart-btn:active { transform: scale(.9); }
+    .heart-btn svg { width: 21px; height: 21px; }
+
+    /* Experience title */
+    .exp-title {
+      text-align: center;
+      font-size: .97rem;
+      color: var(--sub);
+      line-height: 1.45;
+    }
+
+    /* ── Navigation ── */
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .nav-btn {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      border: 1.5px solid #DCDCDC;
+      background: var(--white);
+      font-size: 18px; color: var(--ink);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      transition: border-color .15s, box-shadow .15s, transform .1s;
+      user-select: none;
+      line-height: 1;
+    }
+    .nav-btn:hover { border-color: #999; box-shadow: 0 4px 12px rgba(0,0,0,.11); }
+    .nav-btn:active { transform: scale(.92); }
+
+    .dots { display: flex; gap: 6px; align-items: center; }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #CCC;
+      transition: background .25s, transform .25s;
+    }
+    .dot.on { background: var(--ink); transform: scale(1.45); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- City selector -->
+  <div class="city-wrap">
+    <select class="city-select" id="citySelect">
+      <option value="Paris">📍 Paris</option>
+      <option value="New York">📍 New York</option>
+      <option value="Tokyo">📍 Tokyo</option>
+      <option value="Barcelona">📍 Barcelona</option>
+      <option value="London">📍 London</option>
+      <option value="Rome">📍 Rome</option>
+    </select>
+  </div>
+
+  <!-- Review card -->
+  <div class="card" id="card">
+    <div class="quote">
+      <div class="quote-text" id="quoteText"></div>
+      <div class="quote-author" id="quoteAuthor"></div>
+    </div>
+    <div class="img-wrap" id="imgWrap">
+      <div class="img-bg" id="imgBg"></div>
+      <img class="img-photo" id="imgPhoto" alt="" />
+      <div class="img-deco"></div>
+      <button class="heart-btn" id="heartBtn" aria-label="Save">
+        <svg id="heartSvg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path id="heartPath"
+            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+               2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+               C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5
+               c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="exp-title" id="expTitle"></div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous">&#8592;</button>
+    <div class="dots" id="dots"></div>
+    <button class="nav-btn" id="nextBtn" aria-label="Next">&#8594;</button>
+  </div>
+
+</div>
+<script>
+// ─────────────────────────────────────────
+//  DATA  – real-sounding witty snippets
+// ─────────────────────────────────────────
+const data = {
+  "Paris": [
+    {
+      quote: "Don't forget the high heels...",
+      reviewer: "Helena",
+      title: "Move like a Crazy Horse Paris dancer",
+      gradient: "linear-gradient(155deg,#5c0a14 0%,#b91c1c 55%,#991b1b 100%)",
+      seed: "paris-cabaret-01"
+    },
+    {
+      quote: "Why buy macarons when you can make them!",
+      reviewer: "Sarah",
+      title: "A macaron pastry workshop for all ages by Thibault",
+      gradient: "linear-gradient(155deg,#831843 0%,#ec4899 55%,#f9a8d4 100%)",
+      seed: "paris-macarons-02"
+    },
+    {
+      quote: "Not for those on a diet.",
+      reviewer: "Saul",
+      title: "Marais pastry crawl with a side of history by Amélie",
+      gradient: "linear-gradient(155deg,#78350f 0%,#d97706 55%,#fde68a 100%)",
+      seed: "paris-pastry-03"
+    },
+    {
+      quote: "I'm fluent in baguette now.",
+      reviewer: "Christine",
+      title: "Baguette baking in a real Parisian bakery by Jean-Pierre",
+      gradient: "linear-gradient(155deg,#713f12 0%,#ca8a04 55%,#fef08a 100%)",
+      seed: "paris-bakery-04"
+    },
+    {
+      quote: "The best wine I've ever had cost €8.",
+      reviewer: "Marcus",
+      title: "Natural wine tasting in a Montmartre cave by François",
+      gradient: "linear-gradient(155deg,#4c0519 0%,#881337 55%,#be123c 100%)",
+      seed: "paris-wine-05"
+    }
+  ],
+  "New York": [
+    {
+      quote: "I've been to Italy. This is better.",
+      reviewer: "Carlos",
+      title: "Authentic Neapolitan pizza making in Brooklyn by Marco",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#dc2626 55%,#f87171 100%)",
+      seed: "nyc-pizza-01"
+    },
+    {
+      quote: "Shhh... don't tell anyone about this.",
+      reviewer: "Dave",
+      title: "Prohibition-era speakeasy cocktail tour by Rebecca",
+      gradient: "linear-gradient(155deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%)",
+      seed: "nyc-speakeasy-02"
+    },
+    {
+      quote: "Worth every single calorie.",
+      reviewer: "Jennifer",
+      title: "NYC bagel and lox workshop with Chef Goldstein",
+      gradient: "linear-gradient(155deg,#78350f 0%,#b45309 55%,#d97706 100%)",
+      seed: "nyc-bagel-03"
+    },
+    {
+      quote: "I found my inner Basquiat.",
+      reviewer: "Maria",
+      title: "Brooklyn street art tour and spray paint class by Jordan",
+      gradient: "linear-gradient(155deg,#111827 0%,#374151 55%,#6b7280 100%)",
+      seed: "nyc-streetart-04"
+    },
+    {
+      quote: "You haven't had a dumpling until you've had these.",
+      reviewer: "Kevin",
+      title: "Chinatown dumpling-making and dim sum tour by Nancy",
+      gradient: "linear-gradient(155deg,#3b0764 0%,#7c3aed 55%,#a78bfa 100%)",
+      seed: "nyc-dumpling-05"
+    }
+  ],
+  "Tokyo": [
+    {
+      quote: "Instant noodles are dead to me now.",
+      reviewer: "Kevin",
+      title: "Secret ramen recipe class in Shinjuku by Kenji",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%)",
+      seed: "tokyo-ramen-01"
+    },
+    {
+      quote: "My chopstick skills went from 2/10 to 8/10.",
+      reviewer: "Lisa",
+      title: "Tsukiji sushi masterclass with retired Chef Hiroshi",
+      gradient: "linear-gradient(155deg,#1e3a5f 0%,#1d4ed8 55%,#60a5fa 100%)",
+      seed: "tokyo-sushi-02"
+    },
+    {
+      quote: "The most peaceful 2 hours of my life.",
+      reviewer: "Rachel",
+      title: "Traditional matcha tea ceremony in Harajuku by Yuki",
+      gradient: "linear-gradient(155deg,#14532d 0%,#15803d 55%,#4ade80 100%)",
+      seed: "tokyo-matcha-03"
+    },
+    {
+      quote: "I didn't know I could look this good in a yukata.",
+      reviewer: "Sophie",
+      title: "Kimono dressing and Asakusa stroll by Michiko",
+      gradient: "linear-gradient(155deg,#4a044e 0%,#86198f 55%,#e879f9 100%)",
+      seed: "tokyo-kimono-04"
+    },
+    {
+      quote: "I tried to look cool. Failed. Worth it.",
+      reviewer: "Tom",
+      title: "Harajuku fashion walk and styling class by Rina",
+      gradient: "linear-gradient(155deg,#450a0a 0%,#dc2626 35%,#fb923c 70%,#fcd34d 100%)",
+      seed: "tokyo-harajuku-05"
+    }
+  ],
+  "Barcelona": [
+    {
+      quote: "My feet finally have a personality.",
+      reviewer: "Nina",
+      title: "Flamenco class in El Born with performer Paloma",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%)",
+      seed: "bcn-flamenco-01"
+    },
+    {
+      quote: "I came for the tapas, I stayed for the wine.",
+      reviewer: "Roberto",
+      title: "Gothic Quarter tapas crawl at midnight by Marta",
+      gradient: "linear-gradient(155deg,#78350f 0%,#ea580c 55%,#fb923c 100%)",
+      seed: "bcn-tapas-02"
+    },
+    {
+      quote: "Gaudí would've been a great Instagram follow.",
+      reviewer: "Claire",
+      title: "Hidden Gaudí gems and vermouth tasting by Antoni",
+      gradient: "linear-gradient(155deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%)",
+      seed: "bcn-gaudi-03"
+    },
+    {
+      quote: "This sangria recipe is now a family secret.",
+      reviewer: "Paula",
+      title: "Sangria masterclass and Spanish cooking by Carmen",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#be123c 35%,#ea580c 70%,#fbbf24 100%)",
+      seed: "bcn-sangria-04"
+    }
+  ],
+  "London": [
+    {
+      quote: "The Queen would approve.",
+      reviewer: "James",
+      title: "Traditional afternoon tea and etiquette by Victoria",
+      gradient: "linear-gradient(155deg,#1e3a5f 0%,#1e40af 55%,#60a5fa 100%)",
+      seed: "ldn-tea-01"
+    },
+    {
+      quote: "History is so much better with a pint.",
+      reviewer: "Michael",
+      title: "Hidden pub history tour through the City by Edward",
+      gradient: "linear-gradient(155deg,#451a03 0%,#92400e 55%,#d97706 100%)",
+      seed: "ldn-pub-02"
+    },
+    {
+      quote: "I found my inner Banksy.",
+      reviewer: "Sophie",
+      title: "East London street art walk and stencil class by Ryan",
+      gradient: "linear-gradient(155deg,#111827 0%,#374151 55%,#9ca3af 100%)",
+      seed: "ldn-streetart-03"
+    },
+    {
+      quote: "The fog adds atmosphere. Or maybe that was the whisky.",
+      reviewer: "Andrew",
+      title: "Scotch whisky tasting and pairing in Soho by Fiona",
+      gradient: "linear-gradient(155deg,#1c1917 0%,#44403c 55%,#a8a29e 100%)",
+      seed: "ldn-whisky-04"
+    }
+  ],
+  "Rome": [
+    {
+      quote: "I didn't come to Rome to eat once.",
+      reviewer: "Julia",
+      title: "Pasta-making with a Roman nonna in Trastevere",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#dc2626 45%,#f97316 80%,#fbbf24 100%)",
+      seed: "rome-pasta-01"
+    },
+    {
+      quote: "Gelato is now a food group.",
+      reviewer: "Daniel",
+      title: "Gelato-making masterclass in the historic center by Luca",
+      gradient: "linear-gradient(155deg,#be185d 0%,#ec4899 45%,#fb7185 80%,#fda4af 100%)",
+      seed: "rome-gelato-02"
+    },
+    {
+      quote: "I threw a coin. I'll definitely be back.",
+      reviewer: "Maya",
+      title: "Hidden Rome walking tour and espresso tasting by Giovanni",
+      gradient: "linear-gradient(155deg,#1e3a5f 0%,#0369a1 55%,#38bdf8 100%)",
+      seed: "rome-tour-03"
+    },
+    {
+      quote: "Every sip told me I was doing life wrong before this.",
+      reviewer: "Carla",
+      title: "Rome wine and cheese pairing in a Renaissance cellar by Marco",
+      gradient: "linear-gradient(155deg,#4a044e 0%,#7e22ce 45%,#c084fc 80%,#e9d5ff 100%)",
+      seed: "rome-wine-04"
+    }
+  ]
+};
+
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+let city = "Paris";
+let idx  = 0;
+const saved = {};   // key → true/false (default: not saved)
+let animating = false;
+
+// ─────────────────────────────────────────
+//  DOM
+// ─────────────────────────────────────────
+const card       = document.getElementById("card");
+const quoteText  = document.getElementById("quoteText");
+const quoteAuth  = document.getElementById("quoteAuthor");
+const imgBg      = document.getElementById("imgBg");
+const imgPhoto   = document.getElementById("imgPhoto");
+const expTitle   = document.getElementById("expTitle");
+const heartBtn   = document.getElementById("heartBtn");
+const heartPath  = document.getElementById("heartPath");
+const dotsEl     = document.getElementById("dots");
+const citySelect = document.getElementById("citySelect");
+
+// ─────────────────────────────────────────
+//  EVENTS
+// ─────────────────────────────────────────
+citySelect.addEventListener("change", e => {
+  city = e.target.value;
+  idx  = 0;
+  transition();
+});
+
+document.getElementById("prevBtn").addEventListener("click", () => step(-1));
+document.getElementById("nextBtn").addEventListener("click", () => step(1));
+
+heartBtn.addEventListener("click", () => {
+  const k = key();
+  saved[k] = !saved[k];
+  paintHeart();
+  // pop animation
+  heartBtn.style.transform = "scale(1.35)";
+  setTimeout(() => { heartBtn.style.transform = ""; }, 130);
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft")  step(-1);
+  if (e.key === "ArrowRight") step(1);
+});
+
+// Swipe
+let sx = null;
+card.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, { passive: true });
+card.addEventListener("touchend",   e => {
+  if (sx === null) return;
+  const d = sx - e.changedTouches[0].clientX;
+  if (Math.abs(d) > 40) step(d > 0 ? 1 : -1);
+  sx = null;
+}, { passive: true });
+
+// ─────────────────────────────────────────
+//  LOGIC
+// ─────────────────────────────────────────
+function key() { return `${city}:${idx}`; }
+
+function step(dir) {
+  if (animating) return;
+  const list = data[city];
+  idx = (idx + dir + list.length) % list.length;
+  transition();
+}
+
+function transition() {
+  if (animating) return;
+  animating = true;
+  card.classList.add("out");
+  setTimeout(() => {
+    render();
+    card.classList.remove("out");
+    animating = false;
+  }, 220);
+  renderDots();
+}
+
+function render() {
+  const exp = data[city][idx];
+
+  // Quote
+  quoteText.textContent = "\u201C" + exp.quote + "\u201D";
+  quoteAuth.textContent = "\u2014" + exp.reviewer;
+
+  // Title
+  expTitle.textContent = exp.title;
+
+  // Background gradient (always visible)
+  imgBg.style.background = exp.gradient;
+
+  // Photo (loads on top of gradient)
+  imgPhoto.classList.remove("show");
+  imgPhoto.src = "";
+  const src = `https://picsum.photos/seed/${exp.seed}/400/500`;
+  const tmp = new Image();
+  tmp.onload = () => {
+    imgPhoto.src = src;
+    imgPhoto.classList.add("show");
+  };
+  tmp.src = src;
+
+  // Heart
+  paintHeart();
+}
+
+function paintHeart() {
+  const liked = !!saved[key()];
+  heartPath.setAttribute("fill",         liked ? "#FF385C" : "none");
+  heartPath.setAttribute("stroke",       liked ? "none"    : "#BBBBBB");
+  heartPath.setAttribute("stroke-width", liked ? "0"       : "1.8");
+}
+
+function renderDots() {
+  const list = data[city];
+  dotsEl.innerHTML = "";
+  list.forEach((_, i) => {
+    const d = document.createElement("span");
+    d.className = "dot" + (i === idx ? " on" : "");
+    dotsEl.appendChild(d);
+  });
+}
+
+// ─────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────
+render();
+renderDots();
+</script>
+</body>
+</html>
