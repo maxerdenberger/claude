@@ -218,6 +218,23 @@
     .dl-btn:active { transform: scale(.96); }
     .dl-btn.loading { opacity: .65; cursor: wait; }
     .dl-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* ── View on Airbnb link ── */
+    .airbnb-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+      text-decoration: none;
+      padding: 7px 16px;
+      border: 1.5px solid var(--red);
+      border-radius: 50px;
+      transition: background .18s, color .18s;
+      margin-top: -4px;
+    }
+    .airbnb-link:hover { background: var(--red); color: #fff; }
   </style>
 </head>
 <body>
@@ -232,6 +249,8 @@
       <option value="Barcelona">📍 Barcelona</option>
       <option value="London">📍 London</option>
       <option value="Rome">📍 Rome</option>
+      <option value="Lisbon">📍 Lisbon</option>
+      <option value="Bali">📍 Bali</option>
     </select>
   </div>
 
@@ -256,6 +275,9 @@
       </button>
     </div>
     <div class="exp-title" id="expTitle"></div>
+    <a class="airbnb-link" id="airbnbLink" href="#" target="_blank" rel="noopener noreferrer">
+      View on Airbnb ↗
+    </a>
   </div>
 
   <!-- Download button -->
@@ -278,208 +300,319 @@
 </div>
 <script>
 // ─────────────────────────────────────────
-//  DATA  – real-sounding witty snippets
+//  DATA  – real Airbnb experiences
 // ─────────────────────────────────────────
 const data = {
   "Paris": [
     {
-      quote: "Don't forget the high heels...",
+      quote: "Don't forget the high heels.",
       reviewer: "Helena",
-      title: "Move like a Crazy Horse Paris dancer",
+      title: "Midnight Tour in Paris with Champagne",
       gradient: "linear-gradient(155deg,#5c0a14 0%,#b91c1c 55%,#991b1b 100%)",
-      seed: "paris-cabaret-01"
+      seed: "paris-cabaret-01",
+      url: "https://www.airbnb.com/experiences/3215755"
     },
     {
-      quote: "Why buy macarons when you can make them!",
+      quote: "I now have a secret. Several, actually.",
       reviewer: "Sarah",
-      title: "A macaron pastry workshop for all ages by Thibault",
-      gradient: "linear-gradient(155deg,#831843 0%,#ec4899 55%,#f9a8d4 100%)",
-      seed: "paris-macarons-02"
+      title: "Speakeasy Secrets: Discover Paris's Hidden Bars",
+      gradient: "linear-gradient(155deg,#0f172a 0%,#1e3a5f 55%,#3b82f6 100%)",
+      seed: "paris-speakeasy-02",
+      url: "https://www.airbnb.com/experiences/1108552"
     },
     {
       quote: "Not for those on a diet.",
       reviewer: "Saul",
-      title: "Marais pastry crawl with a side of history by Amélie",
+      title: "Paris Food and Wine with a Travel Journalist",
       gradient: "linear-gradient(155deg,#78350f 0%,#d97706 55%,#fde68a 100%)",
-      seed: "paris-pastry-03"
+      seed: "paris-foodwine-03",
+      url: "https://www.airbnb.com/experiences/2691240"
     },
     {
       quote: "I'm fluent in baguette now.",
       reviewer: "Christine",
-      title: "Baguette baking in a real Parisian bakery by Jean-Pierre",
+      title: "\"Best Bits of Paris\" with 40 Parisian Favorites",
       gradient: "linear-gradient(155deg,#713f12 0%,#ca8a04 55%,#fef08a 100%)",
-      seed: "paris-bakery-04"
+      seed: "paris-bestbits-04",
+      url: "https://www.airbnb.com/experiences/1442657"
     },
     {
       quote: "The best wine I've ever had cost €8.",
       reviewer: "Marcus",
-      title: "Natural wine tasting in a Montmartre cave by François",
+      title: "A Sommelier's Wine Tasting Tour de France",
       gradient: "linear-gradient(155deg,#4c0519 0%,#881337 55%,#be123c 100%)",
-      seed: "paris-wine-05"
+      seed: "paris-wine-05",
+      url: "https://www.airbnb.com/experiences/1360781"
     }
   ],
   "New York": [
     {
-      quote: "I've been to Italy. This is better.",
-      reviewer: "Carlos",
-      title: "Authentic Neapolitan pizza making in Brooklyn by Marco",
+      quote: "Worth every single calorie.",
+      reviewer: "Jennifer",
+      title: "The Ultimate New York City Street Food Tour",
       gradient: "linear-gradient(155deg,#7f1d1d 0%,#dc2626 55%,#f87171 100%)",
-      seed: "nyc-pizza-01"
+      seed: "nyc-streetfood-01",
+      url: "https://www.airbnb.com/experiences/250241"
     },
     {
       quote: "Shhh... don't tell anyone about this.",
       reviewer: "Dave",
-      title: "Prohibition-era speakeasy cocktail tour by Rebecca",
+      title: "NYC's Off the Beaten Path Food Tour",
       gradient: "linear-gradient(155deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%)",
-      seed: "nyc-speakeasy-02"
+      seed: "nyc-offpath-02",
+      url: "https://www.airbnb.com/experiences/2158834"
     },
     {
-      quote: "Worth every single calorie.",
-      reviewer: "Jennifer",
-      title: "NYC bagel and lox workshop with Chef Goldstein",
+      quote: "New York in a sandwich? Absolutely yes.",
+      reviewer: "Carlos",
+      title: "The New York Sandwich Tour",
       gradient: "linear-gradient(155deg,#78350f 0%,#b45309 55%,#d97706 100%)",
-      seed: "nyc-bagel-03"
+      seed: "nyc-sandwich-03",
+      url: "https://www.airbnb.com/experiences/74748"
     },
     {
       quote: "I found my inner Basquiat.",
       reviewer: "Maria",
-      title: "Brooklyn street art tour and spray paint class by Jordan",
+      title: "Walk into Secret Society of Street Art & Food Tour",
       gradient: "linear-gradient(155deg,#111827 0%,#374151 55%,#6b7280 100%)",
-      seed: "nyc-streetart-04"
+      seed: "nyc-streetart-04",
+      url: "https://www.airbnb.com/experiences/838642"
     },
     {
       quote: "You haven't had a dumpling until you've had these.",
       reviewer: "Kevin",
-      title: "Chinatown dumpling-making and dim sum tour by Nancy",
+      title: "Taste Your Way Through Chinatown's Delights",
       gradient: "linear-gradient(155deg,#3b0764 0%,#7c3aed 55%,#a78bfa 100%)",
-      seed: "nyc-dumpling-05"
+      seed: "nyc-chinatown-05",
+      url: "https://www.airbnb.com/experiences/690043"
     }
   ],
   "Tokyo": [
     {
-      quote: "Instant noodles are dead to me now.",
-      reviewer: "Kevin",
-      title: "Secret ramen recipe class in Shinjuku by Kenji",
-      gradient: "linear-gradient(155deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%)",
-      seed: "tokyo-ramen-01"
-    },
-    {
       quote: "My chopstick skills went from 2/10 to 8/10.",
       reviewer: "Lisa",
-      title: "Tsukiji sushi masterclass with retired Chef Hiroshi",
+      title: "Roll Your Own Nigiri, Tamagoyaki Sushi and Maki",
       gradient: "linear-gradient(155deg,#1e3a5f 0%,#1d4ed8 55%,#60a5fa 100%)",
-      seed: "tokyo-sushi-02"
+      seed: "tokyo-sushi-01",
+      url: "https://www.airbnb.com/experiences/53271"
     },
     {
-      quote: "The most peaceful 2 hours of my life.",
+      quote: "Nobody told me I'd need a survival plan for the menu.",
+      reviewer: "Kevin",
+      title: "Shinjuku Izakaya Tour with an Expert",
+      gradient: "linear-gradient(155deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%)",
+      seed: "tokyo-izakaya-02",
+      url: "https://www.airbnb.com/experiences/120652"
+    },
+    {
+      quote: "I came for sake. I left with three favorite types.",
       reviewer: "Rachel",
-      title: "Traditional matcha tea ceremony in Harajuku by Yuki",
+      title: "Sip Sake in a 300-Year-Old Brewery with a Sommelier",
       gradient: "linear-gradient(155deg,#14532d 0%,#15803d 55%,#4ade80 100%)",
-      seed: "tokyo-matcha-03"
+      seed: "tokyo-sake-03",
+      url: "https://www.airbnb.com/experiences/656116"
     },
     {
-      quote: "I didn't know I could look this good in a yukata.",
+      quote: "I didn't know I could look this good in a kimono.",
       reviewer: "Sophie",
-      title: "Kimono dressing and Asakusa stroll by Michiko",
+      title: "Explore Nezu in Kimono with Your Photographer",
       gradient: "linear-gradient(155deg,#4a044e 0%,#86198f 55%,#e879f9 100%)",
-      seed: "tokyo-kimono-04"
+      seed: "tokyo-kimono-04",
+      url: "https://www.airbnb.com/experiences/193347"
     },
     {
       quote: "I tried to look cool. Failed. Worth it.",
       reviewer: "Tom",
-      title: "Harajuku fashion walk and styling class by Rina",
+      title: "Feeling Samurai Soul – Samurai Experience in Tokyo",
       gradient: "linear-gradient(155deg,#450a0a 0%,#dc2626 35%,#fb923c 70%,#fcd34d 100%)",
-      seed: "tokyo-harajuku-05"
+      seed: "tokyo-samurai-05",
+      url: "https://www.airbnb.com/experiences/79594"
     }
   ],
   "Barcelona": [
     {
-      quote: "My feet finally have a personality.",
-      reviewer: "Nina",
-      title: "Flamenco class in El Born with performer Paloma",
-      gradient: "linear-gradient(155deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%)",
-      seed: "bcn-flamenco-01"
-    },
-    {
       quote: "I came for the tapas, I stayed for the wine.",
       reviewer: "Roberto",
-      title: "Gothic Quarter tapas crawl at midnight by Marta",
+      title: "Barcelona Tapas Night Tour with Local Guide",
       gradient: "linear-gradient(155deg,#78350f 0%,#ea580c 55%,#fb923c 100%)",
-      seed: "bcn-tapas-02"
+      seed: "bcn-tapas-01",
+      url: "https://www.airbnb.com/experiences/51496"
     },
     {
-      quote: "Gaudí would've been a great Instagram follow.",
+      quote: "Best table I've ever sat at was in a garden.",
+      reviewer: "Nina",
+      title: "Paella in My Secret Garden",
+      gradient: "linear-gradient(155deg,#14532d 0%,#16a34a 55%,#86efac 100%)",
+      seed: "bcn-paella-02",
+      url: "https://www.airbnb.com/experiences/29758"
+    },
+    {
+      quote: "Every alley has a story. Every corner has a bar.",
       reviewer: "Claire",
-      title: "Hidden Gaudí gems and vermouth tasting by Antoni",
+      title: "Intro to Barcelona: Old Town Gothic Quarter Tour",
       gradient: "linear-gradient(155deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%)",
-      seed: "bcn-gaudi-03"
+      seed: "bcn-gothic-03",
+      url: "https://www.airbnb.com/experiences/203151"
     },
     {
-      quote: "This sangria recipe is now a family secret.",
+      quote: "I came to learn paella. I accidentally learned Spanish.",
       reviewer: "Paula",
-      title: "Sangria masterclass and Spanish cooking by Carmen",
+      title: "Cook Authentic Paella, Market Tour, Tapas & More",
       gradient: "linear-gradient(155deg,#7f1d1d 0%,#be123c 35%,#ea580c 70%,#fbbf24 100%)",
-      seed: "bcn-sangria-04"
+      seed: "bcn-cooking-04",
+      url: "https://www.airbnb.com/experiences/4426690"
     }
   ],
   "London": [
     {
       quote: "The Queen would approve.",
       reviewer: "James",
-      title: "Traditional afternoon tea and etiquette by Victoria",
+      title: "Walk London's Sights with a Retired Royal Guard",
       gradient: "linear-gradient(155deg,#1e3a5f 0%,#1e40af 55%,#60a5fa 100%)",
-      seed: "ldn-tea-01"
+      seed: "ldn-guard-01",
+      url: "https://www.airbnb.com/experiences/165149"
     },
     {
       quote: "History is so much better with a pint.",
       reviewer: "Michael",
-      title: "Hidden pub history tour through the City by Edward",
+      title: "Explore the Hidden Pubs of London",
       gradient: "linear-gradient(155deg,#451a03 0%,#92400e 55%,#d97706 100%)",
-      seed: "ldn-pub-02"
+      seed: "ldn-pubs-02",
+      url: "https://www.airbnb.com/experiences/329331"
     },
     {
-      quote: "I found my inner Banksy.",
+      quote: "I already knew the spells. Turns out I'm Hermione.",
       reviewer: "Sophie",
-      title: "East London street art walk and stencil class by Ryan",
-      gradient: "linear-gradient(155deg,#111827 0%,#374151 55%,#9ca3af 100%)",
-      seed: "ldn-streetart-03"
+      title: "Harry Potter's London",
+      gradient: "linear-gradient(155deg,#1c1917 0%,#3730a3 55%,#818cf8 100%)",
+      seed: "ldn-hp-03",
+      url: "https://www.airbnb.com/experiences/244837"
     },
     {
-      quote: "The fog adds atmosphere. Or maybe that was the whisky.",
+      quote: "Two thousand years of drama, right under my feet.",
       reviewer: "Andrew",
-      title: "Scotch whisky tasting and pairing in Soho by Fiona",
+      title: "Explore London's History with an Archaeologist",
       gradient: "linear-gradient(155deg,#1c1917 0%,#44403c 55%,#a8a29e 100%)",
-      seed: "ldn-whisky-04"
+      seed: "ldn-archaeology-04",
+      url: "https://www.airbnb.com/experiences/933338"
     }
   ],
   "Rome": [
     {
       quote: "I didn't come to Rome to eat once.",
       reviewer: "Julia",
-      title: "Pasta-making with a Roman nonna in Trastevere",
+      title: "Learn to Shape and Cook Pasta next to the Pantheon",
       gradient: "linear-gradient(155deg,#7f1d1d 0%,#dc2626 45%,#f97316 80%,#fbbf24 100%)",
-      seed: "rome-pasta-01"
+      seed: "rome-pasta-01",
+      url: "https://www.airbnb.com/experiences/191069"
     },
     {
       quote: "Gelato is now a food group.",
       reviewer: "Daniel",
-      title: "Gelato-making masterclass in the historic center by Luca",
+      title: "Learn to Make Gelato, Tiramisu, Pasta, and Ravioli",
       gradient: "linear-gradient(155deg,#be185d 0%,#ec4899 45%,#fb7185 80%,#fda4af 100%)",
-      seed: "rome-gelato-02"
+      seed: "rome-gelato-02",
+      url: "https://www.airbnb.com/experiences/348747"
     },
     {
       quote: "I threw a coin. I'll definitely be back.",
       reviewer: "Maya",
-      title: "Hidden Rome walking tour and espresso tasting by Giovanni",
+      title: "10 Wonders of Rome in 3 Hours",
       gradient: "linear-gradient(155deg,#1e3a5f 0%,#0369a1 55%,#38bdf8 100%)",
-      seed: "rome-tour-03"
+      seed: "rome-wonders-03",
+      url: "https://www.airbnb.com/experiences/618326"
     },
     {
-      quote: "Every sip told me I was doing life wrong before this.",
+      quote: "History class never prepared me for this.",
       reviewer: "Carla",
-      title: "Rome wine and cheese pairing in a Renaissance cellar by Marco",
+      title: "The Colosseum & Forum with an Archaeologist",
       gradient: "linear-gradient(155deg,#4a044e 0%,#7e22ce 45%,#c084fc 80%,#e9d5ff 100%)",
-      seed: "rome-wine-04"
+      seed: "rome-colosseum-04",
+      url: "https://www.airbnb.com/experiences/638762"
+    }
+  ],
+  "Lisbon": [
+    {
+      quote: "I tried to pace myself. The pastéis de nata laughed at me.",
+      reviewer: "Emma",
+      title: "The Lisbon Food Tour – Food, Drinks, and Stories",
+      gradient: "linear-gradient(155deg,#78350f 0%,#ca8a04 55%,#fef08a 100%)",
+      seed: "lisbon-food-01",
+      url: "https://www.airbnb.com/experiences/2053138"
+    },
+    {
+      quote: "They said 'try the ginjinha'. I tried it six times.",
+      reviewer: "Patrick",
+      title: "Lisbon Wine Tasting",
+      gradient: "linear-gradient(155deg,#4c0519 0%,#9f1239 55%,#be123c 100%)",
+      seed: "lisbon-wine-02",
+      url: "https://www.airbnb.com/experiences/108098"
+    },
+    {
+      quote: "I cried. The music made me cry. Beautiful.",
+      reviewer: "Ana",
+      title: "Discover Fado Vadio",
+      gradient: "linear-gradient(155deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%)",
+      seed: "lisbon-fado-03",
+      url: "https://www.airbnb.com/experiences/147828"
+    },
+    {
+      quote: "The Tagus is hiding its best sunsets.",
+      reviewer: "João",
+      title: "Lisbon Sailboat Tour on Tagus River",
+      gradient: "linear-gradient(155deg,#0c4a6e 0%,#0284c7 55%,#38bdf8 100%)",
+      seed: "lisbon-sail-04",
+      url: "https://www.airbnb.com/experiences/358359"
+    },
+    {
+      quote: "History you can taste, touch, and dance to.",
+      reviewer: "Diana",
+      title: "Explore Lisbon's African Roots",
+      gradient: "linear-gradient(155deg,#365314 0%,#4d7c0f 55%,#84cc16 100%)",
+      seed: "lisbon-afroroots-05",
+      url: "https://www.airbnb.com/experiences/20863"
+    }
+  ],
+  "Bali": [
+    {
+      quote: "I now genuinely believe I'm a chef.",
+      reviewer: "Maya",
+      title: "Learn Traditional Balinese Cooking",
+      gradient: "linear-gradient(155deg,#14532d 0%,#16a34a 55%,#86efac 100%)",
+      seed: "bali-cooking-01",
+      url: "https://www.airbnb.com/experiences/354836"
+    },
+    {
+      quote: "The fire dancer made eye contact. My heart stopped.",
+      reviewer: "Priya",
+      title: "Discover Uluwatu Temple and a Kecak Fire Dance",
+      gradient: "linear-gradient(155deg,#431407 0%,#c2410c 55%,#fb923c 100%)",
+      seed: "bali-kecak-02",
+      url: "https://www.airbnb.com/experiences/1051247"
+    },
+    {
+      quote: "I went in skeptical. I left spiritual.",
+      reviewer: "Tom",
+      title: "Purify in Bali's Holy Water with a Native",
+      gradient: "linear-gradient(155deg,#0c4a6e 0%,#0369a1 55%,#7dd3fc 100%)",
+      seed: "bali-holywater-03",
+      url: "https://www.airbnb.com/experiences/4445472"
+    },
+    {
+      quote: "I stood up. Then I fell. Then I laughed. Then I stood up again.",
+      reviewer: "Jake",
+      title: "Best Surf Coaching in Canggu, Bali",
+      gradient: "linear-gradient(155deg,#0c4a6e 0%,#0ea5e9 45%,#38bdf8 80%,#bae6fd 100%)",
+      seed: "bali-surf-04",
+      url: "https://www.airbnb.com/experiences/6469667"
+    },
+    {
+      quote: "The reflection shot is real. Zero filters.",
+      reviewer: "Leila",
+      title: "Bali Lempuyang Temple with Photographer",
+      gradient: "linear-gradient(155deg,#78350f 0%,#d97706 35%,#fbbf24 70%,#fef3c7 100%)",
+      seed: "bali-temple-05",
+      url: "https://www.airbnb.com/experiences/3080377"
     }
   ]
 };
@@ -505,6 +638,7 @@ const heartBtn   = document.getElementById("heartBtn");
 const heartPath  = document.getElementById("heartPath");
 const dotsEl     = document.getElementById("dots");
 const citySelect = document.getElementById("citySelect");
+const airbnbLink = document.getElementById("airbnbLink");
 
 // ─────────────────────────────────────────
 //  EVENTS
@@ -575,6 +709,9 @@ function render() {
 
   // Title
   expTitle.textContent = exp.title;
+
+  // Airbnb link
+  airbnbLink.href = exp.url;
 
   // Background gradient (always visible)
   imgBg.style.background = exp.gradient;
