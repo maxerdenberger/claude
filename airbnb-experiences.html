@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airbnb Experiences</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #e8e2d9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    #scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Subtle noise texture overlay */
+    #scene::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.5;
+    }
+
+    .wordmark {
+      position: fixed;
+      top: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #b0a89c;
+      z-index: 100;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .card {
+      position: absolute;
+      width: 210px;
+      height: 290px;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      will-change: transform, opacity;
+      transform-origin: center center;
+      background: #fff;
+
+      /* layered shadow for depth */
+      box-shadow:
+        0 1px 2px rgba(0,0,0,0.10),
+        0 4px 8px rgba(0,0,0,0.08),
+        0 16px 32px rgba(0,0,0,0.10),
+        0 32px 64px rgba(0,0,0,0.06);
+    }
+
+    .card.in-flight {
+      box-shadow:
+        0 8px 16px rgba(0,0,0,0.14),
+        0 24px 48px rgba(0,0,0,0.12),
+        0 48px 96px rgba(0,0,0,0.10);
+    }
+
+    .card img {
+      width: 100%;
+      height: 64%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* Color-block fallback when image fails */
+    .card-img-placeholder {
+      width: 100%;
+      height: 64%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    .card-body {
+      padding: 11px 13px 10px;
+      background: #fff;
+      height: 36%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-tag {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #FF385C;
+    }
+
+    .card-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.35;
+      flex: 1;
+      margin: 4px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-price {
+      font-size: 11px;
+      color: #777;
+    }
+
+    .card-price strong {
+      color: #1a1a1a;
+      font-weight: 700;
+    }
+
+    .card-rating {
+      font-size: 10.5px;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .star { color: #FF385C; }
+
+    /* Restart button */
+    #restart {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      padding: 13px 32px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.5s ease, transform 0.5s ease, background 0.15s ease;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    #restart.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0px);
+      pointer-events: auto;
+    }
+
+    #restart:hover {
+      background: #333;
+    }
+
+    #restart:active {
+      background: #000;
+      transform: translateX(-50%) scale(0.97);
+    }
+
+    /* Hint text */
+    #hint {
+      position: fixed;
+      bottom: 44px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #c0b8ae;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+      z-index: 150;
+      white-space: nowrap;
+    }
+
+    #hint.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wordmark">Airbnb Experiences</div>
+  <div id="scene"></div>
+  <div id="hint">Drop everything, go somewhere</div>
+  <button id="restart">Explore Again</button>
+
+  <script>
+    const EXPERIENCES = [
+      {
+        title: "Cook authentic pasta with a Roman nonna",
+        category: "Food & Drink",
+        price: "$45",
+        rating: "4.98",
+        emoji: "🍝",
+        color: "#fce8d5",
+        img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Sunrise hike to a hidden waterfall",
+        category: "Nature & Outdoors",
+        price: "$28",
+        rating: "4.95",
+        emoji: "🌿",
+        color: "#d5e8dc",
+        img: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Flamenco dancing with a professional dancer",
+        category: "Art & Culture",
+        price: "$55",
+        rating: "4.99",
+        emoji: "💃",
+        color: "#f5d5d5",
+        img: "https://images.unsplash.com/photo-1518834107812-67b0b7c58434?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Sushi rolling masterclass in Tokyo",
+        category: "Food & Drink",
+        price: "$65",
+        rating: "4.97",
+        emoji: "🍣",
+        color: "#d5e6f5",
+        img: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Pottery wheel for beginners",
+        category: "Arts & Crafts",
+        price: "$40",
+        rating: "4.96",
+        emoji: "🏺",
+        color: "#ecddd5",
+        img: "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Midnight kayaking under the stars",
+        category: "Adventures",
+        price: "$75",
+        rating: "5.0",
+        emoji: "🌟",
+        color: "#d5dff5",
+        img: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Street art tour through Bushwick, Brooklyn",
+        category: "Art & Culture",
+        price: "$22",
+        rating: "4.94",
+        emoji: "🎨",
+        color: "#f0d5f5",
+        img: "https://images.unsplash.com/photo-1499781350541-7783f6c6a0c8?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Truffle hunting in the hills of Tuscany",
+        category: "Food & Drink",
+        price: "$90",
+        rating: "4.99",
+        emoji: "🌰",
+        color: "#e8dfc8",
+        img: "https://images.unsplash.com/photo-1444021465936-c6ca81d39b84?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Learn to surf at sunrise",
+        category: "Adventures",
+        price: "$60",
+        rating: "4.97",
+        emoji: "🏄",
+        color: "#c8e8f0",
+        img: "https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Craft cocktails with a master mixologist",
+        category: "Food & Drink",
+        price: "$50",
+        rating: "4.95",
+        emoji: "🍹",
+        color: "#f0e8c8",
+        img: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Candlelit watercolor painting session",
+        category: "Arts & Crafts",
+        price: "$35",
+        rating: "4.93",
+        emoji: "🎨",
+        color: "#f5e5d5",
+        img: "https://images.unsplash.com/photo-1541742425281-c93e9e09fc47?w=420&h=270&fit=crop&auto=format"
+      },
+      {
+        title: "Night photography — city lights & long exposure",
+        category: "Photography",
+        price: "$48",
+        rating: "4.96",
+        emoji: "📸",
+        color: "#d5d5e8",
+        img: "https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=420&h=270&fit=crop&auto=format"
+      },
+    ];
+
+    const CARD_W = 210;
+    const CARD_H = 290;
+    const scene = document.getElementById('scene');
+    const restartBtn = document.getElementById('restart');
+    const hint = document.getElementById('hint');
+
+    let timeouts = [];
+
+    function clearAllTimeouts() {
+      timeouts.forEach(clearTimeout);
+      timeouts = [];
+    }
+
+    function later(fn, ms) {
+      const id = setTimeout(fn, ms);
+      timeouts.push(id);
+      return id;
+    }
+
+    function randomBetween(a, b) {
+      return a + Math.random() * (b - a);
+    }
+
+    /* Pick a random point outside the viewport border */
+    function randomEdgeStart() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const overshoot = randomBetween(180, 380);
+      const edge = Math.floor(Math.random() * 4);
+      switch (edge) {
+        case 0: return { x: randomBetween(0, w), y: -overshoot };          // top
+        case 1: return { x: randomBetween(0, w), y: h + overshoot };       // bottom
+        case 2: return { x: -overshoot,           y: randomBetween(0, h) }; // left
+        default: return { x: w + overshoot,       y: randomBetween(0, h) }; // right
+      }
+    }
+
+    function buildCard(exp) {
+      const el = document.createElement('div');
+      el.className = 'card';
+
+      const imgEl = document.createElement('img');
+      imgEl.src = exp.img;
+      imgEl.alt = exp.title;
+      imgEl.loading = 'lazy';
+      imgEl.draggable = false;
+
+      /* Emoji fallback if image fails */
+      const placeholder = document.createElement('div');
+      placeholder.className = 'card-img-placeholder';
+      placeholder.style.background = exp.color;
+      placeholder.textContent = exp.emoji;
+      placeholder.style.display = 'none';
+
+      imgEl.onerror = () => {
+        imgEl.style.display = 'none';
+        placeholder.style.display = 'flex';
+      };
+
+      el.appendChild(imgEl);
+      el.appendChild(placeholder);
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      body.innerHTML = `
+        <div class="card-tag">${exp.category}</div>
+        <div class="card-title">${exp.title}</div>
+        <div class="card-footer">
+          <span class="card-price">from <strong>${exp.price}</strong>/person</span>
+          <span class="card-rating"><span class="star">★</span> ${exp.rating}</span>
+        </div>
+      `;
+      el.appendChild(body);
+      return el;
+    }
+
+    function runAnimation() {
+      /* Clean up */
+      clearAllTimeouts();
+      scene.innerHTML = '';
+      restartBtn.classList.remove('visible');
+      hint.classList.remove('visible');
+
+      const cx = window.innerWidth  / 2;
+      const cy = window.innerHeight / 2;
+
+      /* Shuffle order so we get a different pile each time */
+      const shuffled = [...EXPERIENCES].sort(() => Math.random() - 0.5);
+
+      shuffled.forEach((exp, i) => {
+        const el = buildCard(exp);
+
+        /* ---- Final resting transform ---- */
+        const landX = randomBetween(-18, 18);
+        const landY = randomBetween(-12, 12);
+        const landRot = randomBetween(-14, 14);
+
+        /* ---- Starting transform (from random edge) ---- */
+        const start = randomEdgeStart();
+        /* Offset from card center (cx, cy) to the edge point */
+        const startDx = start.x - cx;
+        const startDy = start.y - cy;
+        const startRot = randomBetween(-50, 50);
+
+        /* Place card centered in scene; use transform for position */
+        el.style.left   = `${cx - CARD_W / 2}px`;
+        el.style.top    = `${cy - CARD_H / 2}px`;
+        el.style.zIndex = i + 1;
+        el.style.opacity = '0';
+        el.style.transform = `translate(${startDx}px, ${startDy}px) rotate(${startRot}deg) scale(0.85)`;
+        el.classList.add('in-flight');
+
+        scene.appendChild(el);
+
+        /* Stagger: roughly 260ms apart but with a little jitter */
+        const delay = i * 260 + randomBetween(0, 60);
+
+        later(() => {
+          /* 1. Appear */
+          el.style.transition = 'opacity 0.12s ease';
+          el.style.opacity = '1';
+
+          later(() => {
+            /* 2. Fly to pile */
+            el.style.transition = [
+              `transform 0.70s cubic-bezier(0.22, 1, 0.36, 1)`,
+              `opacity 0.12s ease`,
+            ].join(', ');
+
+            el.style.transform = `translate(${landX}px, ${landY}px) rotate(${landRot}deg) scale(1)`;
+            el.classList.remove('in-flight');
+
+          }, 40);
+
+        }, delay);
+      });
+
+      /* Show hints after everything lands */
+      const totalTime = shuffled.length * 260 + 900;
+      later(() => {
+        hint.classList.add('visible');
+        later(() => {
+          restartBtn.classList.add('visible');
+        }, 400);
+      }, totalTime);
+    }
+
+    restartBtn.addEventListener('click', runAnimation);
+    runAnimation();
+  </script>
+</body>
+</html>
