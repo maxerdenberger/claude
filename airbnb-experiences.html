@@ -61,8 +61,6 @@
       will-change: transform, opacity;
       transform-origin: center center;
       background: #fff;
-
-      /* layered shadow for depth */
       box-shadow:
         0 1px 2px rgba(0,0,0,0.10),
         0 4px 8px rgba(0,0,0,0.08),
@@ -85,7 +83,6 @@
       pointer-events: none;
     }
 
-    /* Color-block fallback when image fails */
     .card-img-placeholder {
       width: 100%;
       height: 64%;
@@ -151,71 +148,59 @@
 
     .star { color: #FF385C; }
 
-    /* Restart button */
-    #restart {
+    /* Scroll hint */
+    #scroll-hint {
       position: fixed;
       bottom: 40px;
       left: 50%;
-      transform: translateX(-50%) translateY(8px);
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #b0a89c;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 200;
+      white-space: nowrap;
+      transition: color 0.3s ease;
+    }
+
+    /* Restart button — bottom right */
+    #restart {
+      position: fixed;
+      bottom: 32px;
+      right: 36px;
       background: #1a1a1a;
       color: #fff;
       border: none;
-      padding: 13px 32px;
+      padding: 11px 22px;
       border-radius: 100px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.03em;
       cursor: pointer;
       opacity: 0;
-      transition: opacity 0.5s ease, transform 0.5s ease, background 0.15s ease;
+      transition: opacity 0.5s ease, background 0.15s ease;
       z-index: 200;
       pointer-events: none;
     }
 
     #restart.visible {
       opacity: 1;
-      transform: translateX(-50%) translateY(0px);
       pointer-events: auto;
     }
 
-    #restart:hover {
-      background: #333;
-    }
-
-    #restart:active {
-      background: #000;
-      transform: translateX(-50%) scale(0.97);
-    }
-
-    /* Hint text */
-    #hint {
-      position: fixed;
-      bottom: 44px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #c0b8ae;
-      opacity: 0;
-      transition: opacity 0.6s ease;
-      pointer-events: none;
-      z-index: 150;
-      white-space: nowrap;
-    }
-
-    #hint.visible {
-      opacity: 1;
-    }
+    #restart:hover { background: #333; }
+    #restart:active { background: #000; }
   </style>
 </head>
 <body>
 
   <div class="wordmark">Airbnb Experiences</div>
   <div id="scene"></div>
-  <div id="hint">Drop everything, go somewhere</div>
-  <button id="restart">Explore Again</button>
+  <div id="scroll-hint">↑ Scroll to browse</div>
+  <button id="restart">Fly again</button>
 
   <script>
     const EXPERIENCES = [
@@ -329,66 +314,95 @@
       },
     ];
 
-    const CARD_W = 210;
-    const CARD_H = 290;
-    const scene = document.getElementById('scene');
+    /* ─── Constants ─────────────────────────────────────────── */
+    const CARD_W    = 210;
+    const CARD_H    = 290;
+    const GRID_COLS = 4;
+    const GRID_GAP  = 16;
+
+    /* ─── State ──────────────────────────────────────────────── */
+    const scene      = document.getElementById('scene');
     const restartBtn = document.getElementById('restart');
-    const hint = document.getElementById('hint');
+    const scrollHint = document.getElementById('scroll-hint');
 
-    let timeouts = [];
+    let cardStates    = [];   // per-card animation data
+    let flyInDone     = false;
+    let progress      = 0;   // current (lerped)   0 = pile, 1 = grid
+    let targetProgress = 0;  // where we're heading
+    let timeouts      = [];
 
-    function clearAllTimeouts() {
-      timeouts.forEach(clearTimeout);
-      timeouts = [];
-    }
+    /* ─── Helpers ────────────────────────────────────────────── */
+    function clearAllTimeouts() { timeouts.forEach(clearTimeout); timeouts = []; }
+    function later(fn, ms) { const id = setTimeout(fn, ms); timeouts.push(id); return id; }
+    function rand(a, b) { return a + Math.random() * (b - a); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
 
-    function later(fn, ms) {
-      const id = setTimeout(fn, ms);
-      timeouts.push(id);
-      return id;
-    }
-
-    function randomBetween(a, b) {
-      return a + Math.random() * (b - a);
-    }
-
-    /* Pick a random point outside the viewport border */
     function randomEdgeStart() {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      const overshoot = randomBetween(180, 380);
-      const edge = Math.floor(Math.random() * 4);
-      switch (edge) {
-        case 0: return { x: randomBetween(0, w), y: -overshoot };          // top
-        case 1: return { x: randomBetween(0, w), y: h + overshoot };       // bottom
-        case 2: return { x: -overshoot,           y: randomBetween(0, h) }; // left
-        default: return { x: w + overshoot,       y: randomBetween(0, h) }; // right
+      const w = window.innerWidth, h = window.innerHeight;
+      const overshoot = rand(180, 380);
+      switch (Math.floor(Math.random() * 4)) {
+        case 0: return { x: rand(0, w), y: -overshoot };
+        case 1: return { x: rand(0, w), y: h + overshoot };
+        case 2: return { x: -overshoot, y: rand(0, h) };
+        default:return { x: w + overshoot, y: rand(0, h) };
       }
     }
 
+    /* Pre-calculate where each card sits in the grid (as translate offsets from scene center) */
+    function computeGridPositions(n) {
+      const cols    = GRID_COLS;
+      const rows    = Math.ceil(n / cols);
+      const availW  = window.innerWidth  - 64;
+      const availH  = window.innerHeight - 72; // headroom for wordmark
+      const naturalW = cols * CARD_W + (cols - 1) * GRID_GAP;
+      const naturalH = rows * CARD_H + (rows - 1) * GRID_GAP;
+      const scale   = Math.min(1, availW / naturalW, availH / naturalH);
+
+      const cw   = CARD_W * scale;
+      const ch   = CARD_H * scale;
+      const gx   = GRID_GAP * scale;
+      const gy   = GRID_GAP * scale;
+      const gridW = cols * cw + (cols - 1) * gx;
+      const gridH = rows * ch + (rows - 1) * gy;
+
+      const cx = window.innerWidth  / 2;
+      const cy = window.innerHeight / 2 + 18; // nudge down slightly for wordmark
+      const originX = cx - gridW / 2;
+      const originY = cy - gridH / 2;
+
+      return Array.from({ length: n }, (_, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        return {
+          // translate offset from card's centered anchor (cx, cy)
+          x: originX + col * (cw + gx) + cw / 2 - cx,
+          y: originY + row * (ch + gy) + ch / 2 - cy,
+          scale,
+          col,
+          row,
+        };
+      });
+    }
+
+    /* ─── Card DOM builder ───────────────────────────────────── */
     function buildCard(exp) {
       const el = document.createElement('div');
       el.className = 'card';
 
-      const imgEl = document.createElement('img');
-      imgEl.src = exp.img;
-      imgEl.alt = exp.title;
-      imgEl.loading = 'lazy';
-      imgEl.draggable = false;
+      const img = document.createElement('img');
+      img.src = exp.img;
+      img.alt = exp.title;
+      img.loading = 'lazy';
+      img.draggable = false;
 
-      /* Emoji fallback if image fails */
       const placeholder = document.createElement('div');
       placeholder.className = 'card-img-placeholder';
       placeholder.style.background = exp.color;
       placeholder.textContent = exp.emoji;
       placeholder.style.display = 'none';
+      img.onerror = () => { img.style.display = 'none'; placeholder.style.display = 'flex'; };
 
-      imgEl.onerror = () => {
-        imgEl.style.display = 'none';
-        placeholder.style.display = 'flex';
-      };
-
-      el.appendChild(imgEl);
+      el.appendChild(img);
       el.appendChild(placeholder);
 
       const body = document.createElement('div');
@@ -405,78 +419,133 @@
       return el;
     }
 
+    /* ─── RAF tick: scroll-driven interpolation ──────────────── */
+    function tick() {
+      // Smoothly chase the target
+      progress += (targetProgress - progress) * 0.09;
+
+      if (flyInDone && cardStates.length) {
+        const t = Math.max(0, Math.min(1, progress));
+
+        cardStates.forEach((s, i) => {
+          const x   = lerp(s.pileX, s.gridX, t);
+          const y   = lerp(s.pileY, s.gridY, t);
+          const rot = lerp(s.pileRot, 0, t);
+          const sc  = lerp(1, s.gridScale, t);
+          s.el.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg) scale(${sc})`;
+
+          // z-index: arrival order when piled, row-major when spread
+          s.el.style.zIndex = t < 0.5
+            ? s.pileZ
+            : (s.gridRow * GRID_COLS + s.gridCol + 1);
+        });
+
+        // Scroll hint: visible at 0, fades by progress 0.15, reappears (flipped) near 1
+        const hintIn  = Math.max(0, 1 - t / 0.15);
+        const hintOut = Math.max(0, (t - 0.92) / 0.08);
+        scrollHint.style.opacity = String(Math.max(hintIn, hintOut).toFixed(3));
+        if (t > 0.92) {
+          scrollHint.textContent = '↓ Scroll to stack';
+        } else {
+          scrollHint.textContent = '↑ Scroll to browse';
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    /* ─── Wheel handler ──────────────────────────────────────── */
+    function handleWheel(e) {
+      if (!flyInDone) return;
+      e.preventDefault();
+      // scroll up (deltaY < 0) → unstack (progress → 1)
+      // scroll down (deltaY > 0) → restack (progress → 0)
+      targetProgress = Math.max(0, Math.min(1, targetProgress - e.deltaY / 600));
+    }
+
+    /* ─── Main animation ─────────────────────────────────────── */
     function runAnimation() {
-      /* Clean up */
       clearAllTimeouts();
+      flyInDone = false;
+      progress = 0;
+      targetProgress = 0;
+      cardStates = [];
       scene.innerHTML = '';
       restartBtn.classList.remove('visible');
-      hint.classList.remove('visible');
+      scrollHint.style.opacity = '0';
 
       const cx = window.innerWidth  / 2;
       const cy = window.innerHeight / 2;
 
-      /* Shuffle order so we get a different pile each time */
-      const shuffled = [...EXPERIENCES].sort(() => Math.random() - 0.5);
+      const shuffled  = [...EXPERIENCES].sort(() => Math.random() - 0.5);
+      const gridPos   = computeGridPositions(shuffled.length);
 
       shuffled.forEach((exp, i) => {
         const el = buildCard(exp);
 
-        /* ---- Final resting transform ---- */
-        const landX = randomBetween(-18, 18);
-        const landY = randomBetween(-12, 12);
-        const landRot = randomBetween(-14, 14);
+        const pileX   = rand(-18, 18);
+        const pileY   = rand(-12, 12);
+        const pileRot = rand(-14, 14);
 
-        /* ---- Starting transform (from random edge) ---- */
-        const start = randomEdgeStart();
-        /* Offset from card center (cx, cy) to the edge point */
+        const start   = randomEdgeStart();
         const startDx = start.x - cx;
         const startDy = start.y - cy;
-        const startRot = randomBetween(-50, 50);
+        const startRot = rand(-50, 50);
 
-        /* Place card centered in scene; use transform for position */
-        el.style.left   = `${cx - CARD_W / 2}px`;
-        el.style.top    = `${cy - CARD_H / 2}px`;
-        el.style.zIndex = i + 1;
-        el.style.opacity = '0';
+        // Anchor card at scene center; transform does all positioning
+        el.style.left      = `${cx - CARD_W / 2}px`;
+        el.style.top       = `${cy - CARD_H / 2}px`;
+        el.style.zIndex    = i + 1;
+        el.style.opacity   = '0';
         el.style.transform = `translate(${startDx}px, ${startDy}px) rotate(${startRot}deg) scale(0.85)`;
         el.classList.add('in-flight');
 
         scene.appendChild(el);
 
-        /* Stagger: roughly 260ms apart but with a little jitter */
-        const delay = i * 260 + randomBetween(0, 60);
+        cardStates.push({
+          el,
+          pileX, pileY, pileRot,
+          gridX:     gridPos[i].x,
+          gridY:     gridPos[i].y,
+          gridScale: gridPos[i].scale,
+          gridCol:   gridPos[i].col,
+          gridRow:   gridPos[i].row,
+          pileZ:     i + 1,
+        });
+
+        const delay = i * 260 + rand(0, 60);
 
         later(() => {
-          /* 1. Appear */
           el.style.transition = 'opacity 0.12s ease';
           el.style.opacity = '1';
 
           later(() => {
-            /* 2. Fly to pile */
             el.style.transition = [
-              `transform 0.70s cubic-bezier(0.22, 1, 0.36, 1)`,
-              `opacity 0.12s ease`,
+              'transform 0.70s cubic-bezier(0.22, 1, 0.36, 1)',
+              'opacity 0.12s ease',
             ].join(', ');
-
-            el.style.transform = `translate(${landX}px, ${landY}px) rotate(${landRot}deg) scale(1)`;
+            el.style.transform = `translate(${pileX}px, ${pileY}px) rotate(${pileRot}deg) scale(1)`;
             el.classList.remove('in-flight');
-
           }, 40);
 
         }, delay);
       });
 
-      /* Show hints after everything lands */
-      const totalTime = shuffled.length * 260 + 900;
+      // Hand off from CSS transitions → RAF once all cards have landed
+      const totalFlyIn = shuffled.length * 260 + 1000;
       later(() => {
-        hint.classList.add('visible');
-        later(() => {
-          restartBtn.classList.add('visible');
-        }, 400);
-      }, totalTime);
+        // Strip CSS transitions so RAF has full control
+        cardStates.forEach(s => { s.el.style.transition = 'none'; });
+        flyInDone = true;
+        // Hint fades in (RAF will drive opacity from now on)
+        later(() => restartBtn.classList.add('visible'), 500);
+      }, totalFlyIn);
     }
 
+    /* ─── Boot ───────────────────────────────────────────────── */
+    window.addEventListener('wheel', handleWheel, { passive: false });
     restartBtn.addEventListener('click', runAnimation);
+    requestAnimationFrame(tick);
     runAnimation();
   </script>
 </body>
