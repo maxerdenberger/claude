@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOMANI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #f0f0f0;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .clock {
+      text-align: center;
+    }
+
+    .time {
+      font-size: clamp(3rem, 12vw, 8rem);
+      font-weight: 300;
+      letter-spacing: 0.05em;
+      line-height: 1;
+    }
+
+    .date {
+      margin-top: 1rem;
+      font-size: clamp(0.75rem, 2vw, 1rem);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="clock">
+    <div class="time" id="time"></div>
+    <div class="date" id="date"></div>
+  </div>
+
+  <script>
+    function update() {
+      const now = new Date();
+
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('time').textContent = `${h}:${m}:${s}`;
+
+      document.getElementById('date').textContent = now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    update();
+    setInterval(update, 1000);
+  </script>
+</body>
+</html>
