@@ -304,9 +304,10 @@ function flipTo(d, next) {
   void flap.offsetWidth; /* reflow */
   flap.classList.add('go');
 
-  /* after animation, settle bottom */
+  /* after animation, settle bottom and reset flap-front to current */
   flap.addEventListener('animationend', () => {
     d._botNum.textContent = next;
+    d._ffNum.textContent  = next;
     flap.classList.remove('go');
   }, { once: true });
 
