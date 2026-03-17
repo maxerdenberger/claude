@@ -15,49 +15,75 @@
       background: #0a0a0a;
       color: #f0f0f0;
       font-family: 'Courier New', monospace;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 2rem;
     }
 
-    .clock {
-      text-align: center;
+    .zones {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .zone {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    .city {
+      font-size: clamp(0.7rem, 2vw, 0.85rem);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      opacity: 0.4;
+      flex-shrink: 0;
     }
 
     .time {
-      font-size: clamp(3rem, 12vw, 8rem);
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
       font-weight: 300;
       letter-spacing: 0.05em;
       line-height: 1;
     }
-
-    .date {
-      margin-top: 1rem;
-      font-size: clamp(0.75rem, 2vw, 1rem);
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      opacity: 0.4;
-    }
   </style>
 </head>
 <body>
-  <div class="clock">
-    <div class="time" id="time"></div>
-    <div class="date" id="date"></div>
-  </div>
+  <div class="zones" id="zones"></div>
 
   <script>
+    const zones = [
+      { city: 'New York', tz: 'America/New_York' },
+      { city: 'London',   tz: 'Europe/London' },
+      { city: 'Dubai',    tz: 'Asia/Dubai' },
+      { city: 'Tokyo',    tz: 'Asia/Tokyo' },
+      { city: 'Sydney',   tz: 'Australia/Sydney' },
+    ];
+
+    const container = document.getElementById('zones');
+
+    zones.forEach(({ city, tz }) => {
+      const div = document.createElement('div');
+      div.className = 'zone';
+      div.innerHTML = `<span class="city">${city}</span><span class="time" id="${tz}"></span>`;
+      container.appendChild(div);
+    });
+
     function update() {
       const now = new Date();
-
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      const s = String(now.getSeconds()).padStart(2, '0');
-      document.getElementById('time').textContent = `${h}:${m}:${s}`;
-
-      document.getElementById('date').textContent = now.toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      zones.forEach(({ tz }) => {
+        document.getElementById(tz).textContent = now.toLocaleTimeString('en-GB', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
       });
     }
 
